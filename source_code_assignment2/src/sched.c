@@ -29,14 +29,14 @@ struct pcb_t * get_proc(void) {
 	else {
 		if (ready_queue.size == 0) {
 			for (int i = 0; i < run_queue.size; i++) {
-				ready_queue[i] = run_queue[i];
+				ready_queue.proc[i] = run_queue.proc[i];
 			}
 			proc = dequeue(&ready_queue);
 		}
 		else proc = dequeue(&ready_queue);
 	}
-	return proc;
 	pthread_mutex_unlock(&queue_lock);
+	return proc;
 }
 
 void put_proc(struct pcb_t * proc) {
