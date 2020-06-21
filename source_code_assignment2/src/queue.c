@@ -11,16 +11,16 @@ void enqueue(struct queue_t * q, struct pcb_t * proc) {
 	int rear = q->size - 1;
 	if (empty(q)) {
 		rear = 0;
-		q->proc[rear + 1] = proc;
 		q->size++;
+		q->proc[rear] = proc;
 	}
 	if (!empty(q)) {
 		if (rear == MAX_QUEUE_SIZE - 1) {
 			printf("Overflow\n");
 		}
 		else {
-			q->proc[rear + 1] = proc;
 			q->size++;
+			q->proc[rear + 1] = proc;
 		}
 	}
 }
@@ -43,7 +43,7 @@ struct pcb_t * dequeue(struct queue_t * q) {
 				for (int j = i; j < q->size - 1; j++) {
 					q->proc[j] = q->proc[j + 1];
 				}
-				q->size --;
+				q->size--;
 				return tmp;			
 			}
 		}
