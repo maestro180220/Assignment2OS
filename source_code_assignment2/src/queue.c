@@ -29,7 +29,7 @@ struct pcb_t * dequeue(struct queue_t * q) {
 	/* TODO: return a pcb whose prioprity is the highest
 	 * in the queue [q] and remember to remove it from q
 	 * */
-	if (empty(q)) printf("Underflow");
+	if (empty(q)) printf("Underflow\n");
 	else {
 		uint32_t max_priority = q->proc[0]->priority;
 		for (int i = 0; i < q->size; i++) {
