@@ -50,7 +50,7 @@ struct page_table_t {
 struct seg_table_t {
 	/* Translation table for the first layer */
 	struct {
-		addr_t v_index;	// Virtual index
+		addr_t v_index;	// Virtual index of segment table
 		struct page_table_t * pages;
 	} table[1 << SEGMENT_LEN];
 	int size;	// Number of row in the first layer
