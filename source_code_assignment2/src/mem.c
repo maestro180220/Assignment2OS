@@ -142,7 +142,7 @@ addr_t alloc_mem(uint32_t size, struct pcb_t * proc) {
 		struct page_table_t * page_table = NULL;
 		int mem_count = 0; // Variable for checking if we allocated enough page.
 		int prev; // Variable for storing previous mem_stat index of allocated page.
-		for (int i = 0; i < NUM_PAGES && _mem_stat[i].proc == 0 ; i++,address += PAGE_SIZE, mem_count++)
+		for (int i = 0; i < NUM_PAGES && _mem_stat[i].proc == 0 && mem_count <= num_pages; i++,address += PAGE_SIZE, mem_count++)
 		{//Loop through the _mem_stat with given conditions
 			page_table_no = get_first_lv(address);
 			page_no = get_second_lv(address);
@@ -165,7 +165,7 @@ addr_t alloc_mem(uint32_t size, struct pcb_t * proc) {
 					}
 				}		
 			}	
-			if(mem_count <= num_pages){
+		
 				if (!mem_count)	{
 						_mem_stat[i].proc = proc->pid;
 						_mem_stat[i].index = mem_count;
@@ -179,7 +179,7 @@ addr_t alloc_mem(uint32_t size, struct pcb_t * proc) {
 						_mem_stat[prev].next = i;
 						prev = i;
 					}
-			}
+			
 		}
 		
 	}
