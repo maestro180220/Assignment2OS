@@ -148,20 +148,12 @@ addr_t alloc_mem(uint32_t size, struct pcb_t * proc) {
 			page_no = get_second_lv(address);
 			page_table = get_page_table(page_table_no,proc->seg_table);
 			
-			if(!page_table){//If there is no page table with v_index = page_table_no, then we create a new page_table.
+			if(page_table == NULL){//If there is no page table with v_index = page_table_no, then we create a new page_table.
 				proc->seg_table->size++;
 				int temp = proc->seg_table->size - 1;
 				proc->seg_table->table[temp].pages = (struct page_table_t *)malloc(sizeof(struct page_table_t));
 				proc->seg_table->table[temp].v_index = page_table_no;
 				page_table = proc->seg_table->table[temp].pages;
-				for (int j = 0; j < (1 << PAGE_LEN); j++)
-				{
-					if(page_table->table[j].v_index == 0){
-						page_table->table[j].v_index = page_no;
-						page_table->table[j].p_index = i;
-						break;
-					}
-				}
 			}
 			else{
 				for (int j = 0; j < (1 << PAGE_LEN) ; j++)
@@ -173,14 +165,14 @@ addr_t alloc_mem(uint32_t size, struct pcb_t * proc) {
 					}
 				}		
 			}	
-			if(mem_count < num_pages){
+			if(mem_count <= num_pages){
 				if (!mem_count)	{
 						_mem_stat[i].proc = proc->pid;
 						_mem_stat[i].index = mem_count;
 						prev =i;
 						continue;
 					}
-					else if (mem_count == num_pages - 1) _mem_stat[prev].next = -1;
+					else if (mem_count == num_pages) _mem_stat[prev].next = -1;
 					else{
 						_mem_stat[i].proc = proc->pid;
 						_mem_stat[i].index = mem_count;
@@ -191,8 +183,6 @@ addr_t alloc_mem(uint32_t size, struct pcb_t * proc) {
 		}
 		
 	}
-	
-	
 	pthread_mutex_unlock(&mem_lock);
 	return ret_mem;
 }
@@ -205,7 +195,30 @@ int free_mem(addr_t address, struct pcb_t * proc) {
 	 * 	  the process [proc].
 	 * 	- Remember to use lock to protect the memory from other
 	 * 	  processes.  */
-
+	pthread_mutex_lock(&mem_lock);
+	addr_t page_table_no = get_first_lv(address);
+	addr_t page_no = get_second_lv(address);
+	struct page_table_t * page_table = get_page_table(page_table_no,proc->seg_table);
+	int frame;
+	for (int i = 0; i < (1 << PAGE_LEN); i++)
+	{
+		if (page_table->table[i].v_index == page_no)
+		{
+			frame = page_table->table[i].p_index;
+			break;
+		}
+	}
+	while (1)
+	{
+		_mem_stat[frame].proc = 0;
+		frame = _mem_stat[frame].next;
+		if (_mem_stat[frame].next == -1)
+		{
+			_mem_stat[frame].proc = 0;
+			break;
+		}			
+	}
+	pthread_mutex_unlock(&mem_lock);
 	return 0;
 }
 
