@@ -124,13 +124,14 @@ addr_t alloc_mem(uint32_t size, struct pcb_t * proc) {
 	* 	  to ensure accesses to allocated memory slot is
 	* 	  valid. */
 	int count = 0;
+
 	for (int i = 0; i < NUM_PAGES; i++)
 	{
 		if (_mem_stat[i].proc == 0)
 		{
 			count++;
 		}
-		if (count >= num_pages) mem_avail = 1;
+		if (count == num_pages) mem_avail = 1;
 	}
 	if (mem_avail){
 		ret_mem = proc->bp;
@@ -140,50 +141,43 @@ addr_t alloc_mem(uint32_t size, struct pcb_t * proc) {
 		addr_t page_table_no;
 		addr_t page_no;
 		struct page_table_t * page_table = NULL;
-		int mem_count = 0; // Variable for checking if we allocated enough page.
+		int index = 0;// Variable for checking if we allocated enough page.
 		int prev; // Variable for storing previous mem_stat index of allocated page.
-		for (int i = 0; i < NUM_PAGES && _mem_stat[i].proc == 0 && mem_count <= num_pages; i++,address += PAGE_SIZE, mem_count++)
-		{//Loop through the _mem_stat with given conditions
-			page_table_no = get_first_lv(address);
-			page_no = get_second_lv(address);
-			page_table = get_page_table(page_table_no,proc->seg_table);
-			
-			if(page_table == NULL){//If there is no page table with v_index = page_table_no, then we create a new page_table.
-				proc->seg_table->size++;
-				int temp = proc->seg_table->size - 1;
-				proc->seg_table->table[temp].pages = (struct page_table_t *)malloc(sizeof(struct page_table_t));
-				proc->seg_table->table[temp].v_index = page_table_no;
-				page_table = proc->seg_table->table[temp].pages;
-			}
-			else{
-				for (int j = 0; j < (1 << PAGE_LEN) ; j++)
-				{
-					if (page_table->table[j].v_index ==  page_no)
-					{
-						page_table->table[j].p_index = i; 
-						break;
-					}
-				}		
+		for (int i = 0; i < NUM_PAGES && index < num_pages; i++)
+		{//Loop through the _mem_stat with given conditions			
+			if (_mem_stat[i].proc == 0 )
+			{
+				_mem_stat[i].proc = proc->pid;
+				_mem_stat[i].index = index++;
+				if (index > 1) _mem_stat[prev].next = i;
+				if (index == num_pages) _mem_stat[i].next = -1;
+				prev = i;
+				
+				////////////////////////////////////////////////
+				page_table_no = get_first_lv(address);
+				page_no = get_second_lv(address);				
+				page_table = get_page_table(page_table_no,proc->seg_table);
+				if(page_table == NULL){//If there is no page table with v_index = page_table_no, then we create a new page_table.
+					proc->seg_table->size++;
+					int temp = proc->seg_table->size - 1;
+					proc->seg_table->table[temp].pages = (struct page_table_t *)malloc(sizeof(struct page_table_t));
+					proc->seg_table->table[temp].v_index = page_table_no;
+					page_table = proc->seg_table->table[temp].pages;
+					page_table->table[page_table->size].v_index = page_no;
+					page_table->table[page_table->size].p_index = i;
+					page_table->size++;
+				}
+				else{
+					page_table->table[page_table->size].v_index = page_no;
+					page_table->table[page_table->size].p_index = i;
+					page_table->size++;
+				}
+				address += PAGE_SIZE;
 			}	
-		
-				if (!mem_count)	{
-						_mem_stat[i].proc = proc->pid;
-						_mem_stat[i].index = mem_count;
-						prev =i;
-						continue;
-					}
-					else if (mem_count == num_pages) _mem_stat[prev].next = -1;
-					else{
-						_mem_stat[i].proc = proc->pid;
-						_mem_stat[i].index = mem_count;
-						_mem_stat[prev].next = i;
-						prev = i;
-					}
-			
 		}
-		
 	}
 	pthread_mutex_unlock(&mem_lock);
+	
 	return ret_mem;
 }
 int free_mem(addr_t address, struct pcb_t * proc) {
@@ -197,10 +191,12 @@ int free_mem(addr_t address, struct pcb_t * proc) {
 	 * 	  processes.  */
 	pthread_mutex_lock(&mem_lock);
 	addr_t page_table_no = get_first_lv(address);
+	
 	addr_t page_no = get_second_lv(address);
+	
 	struct page_table_t * page_table = get_page_table(page_table_no,proc->seg_table);
 	int frame;
-	for (int i = 0; i < (1 << PAGE_LEN); i++)
+	for (int i = 0; i < page_table->size; i++)
 	{
 		if (page_table->table[i].v_index == page_no)
 		{
@@ -212,9 +208,8 @@ int free_mem(addr_t address, struct pcb_t * proc) {
 	{
 		_mem_stat[frame].proc = 0;
 		frame = _mem_stat[frame].next;
-		if (_mem_stat[frame].next == -1)
+		if (frame == -1)
 		{
-			_mem_stat[frame].proc = 0;
 			break;
 		}			
 	}
